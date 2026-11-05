@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // >>> Put the admin email(s) you create in Firebase Authentication here <<<
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ['admin@rssystems.in'];
+    }
+
+    match /enquiries/{id} {
+      // Anyone on the website can submit an enquiry, but only with valid fields
+      allow create: if request.resource.data.keys().hasOnly(
+            ['request','name','phone','email','company','product','message','status','via','page','createdAt'])
+        && request.resource.data.name is string    && request.resource.data.name.size() > 0    && request.resource.data.name.size() <= 100
+        && request.resource.data.phone is string   && request.resource.data.phone.size() >= 7  && request.resource.data.phone.size() <= 30
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'New'
+        && request.resource.data.createdAt == request.time;
+
+      // Only the admin can read, update status or delete
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

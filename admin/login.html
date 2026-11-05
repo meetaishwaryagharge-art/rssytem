@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin Login | RS Systems &amp; Solutions</title>
+<link rel="icon" href="../assets/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --navy:#0b1f3a; --blue:#0b4f8a; --sky:#0284c7; --line:#dbe3ee; --muted:#64748b; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; padding:20px; font-family:'Open Sans',system-ui,sans-serif; color:#1f2937;
+    background: radial-gradient(1200px 600px at 80% -10%, #14457a 0%, transparent 60%), linear-gradient(160deg,#071428,#0b1f3a 60%,#0d2c52); }
+  .card { width:100%; max-width:410px; background:#fff; border-radius:22px; padding:34px 30px 28px; box-shadow:0 30px 80px rgba(0,0,0,.45); }
+  .brand { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .brand img { width:44px; height:44px; border-radius:10px; object-fit:contain; }
+  .brand b { display:block; font-family:Montserrat,sans-serif; font-weight:800; color:var(--navy); line-height:1.1; }
+  .brand small { color:var(--muted); font-size:.75rem; }
+  h1 { font-family:Montserrat,sans-serif; font-size:1.4rem; margin:0 0 4px; color:var(--navy); }
+  p.sub { margin:0 0 20px; color:var(--muted); font-size:.88rem; }
+  label { display:block; font-size:.8rem; font-weight:600; color:#334155; margin-bottom:14px; }
+  input { display:block; width:100%; margin-top:5px; padding:12px 13px; border:1px solid #cbd5e1; border-radius:12px; font:inherit; font-size:.95rem; }
+  input:focus { outline:0; border-color:var(--sky); box-shadow:0 0 0 3px rgba(2,132,199,.18); }
+  .pw { position:relative; } .pw button { position:absolute; right:8px; bottom:8px; border:0; background:none; color:var(--muted); font-size:.75rem; font-weight:700; cursor:pointer; padding:6px; }
+  .btn { width:100%; border:0; border-radius:999px; padding:13px; background:var(--blue); color:#fff; font-family:Montserrat,sans-serif; font-weight:700; font-size:.92rem; cursor:pointer; }
+  .btn:hover { background:#083c6b; } .btn:disabled { opacity:.6; cursor:wait; }
+  .msg { font-size:.83rem; border-radius:10px; padding:10px 12px; margin:0 0 14px; display:none; }
+  .msg.err { display:block; background:#fef2f2; color:#b91c1c; } .msg.ok { display:block; background:#ecfdf5; color:#047857; }
+  .links { text-align:center; margin-top:16px; font-size:.82rem; }
+  .links a, .links button { color:var(--sky); background:none; border:0; font:inherit; cursor:pointer; text-decoration:none; }
+  .links a:hover, .links button:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand"><img src="../assets/rslogo.jpeg" alt="RS Systems logo"><span><b>RS Systems</b><small>Enquiry dashboard</small></span></div>
+    <h1>Admin sign in</h1>
+    <p class="sub">Authorised team members only.</p>
+    <div id="msg" class="msg" role="alert"></div>
+    <form id="f" novalidate>
+      <label>Email<input id="email" type="email" autocomplete="username" required placeholder="you@rssystems.in"></label>
+      <label class="pw">Password<input id="pass" type="password" autocomplete="current-password" required placeholder="Your password"><button type="button" id="tg">SHOW</button></label>
+      <button class="btn" id="go" type="submit">Sign in</button>
+    </form>
+    <div class="links"><button type="button" id="forgot">Forgot password?</button> &middot; <a href="../index.html">Back to website</a></div>
+  </main>
+
+<script type="module">
+  import { firebaseConfig } from '../assets/firebase-config.js';
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  const $ = id => document.getElementById(id);
+  const show = (t, ok) => { const m = $('msg'); m.textContent = t; m.className = 'msg ' + (ok ? 'ok' : 'err'); };
+  if (/YOUR_/.test(firebaseConfig.apiKey)) { show('Firebase is not configured yet. Paste your config into assets/firebase-config.js.'); $('go').disabled = true; }
+  else {
+    const auth = getAuth(initializeApp(firebaseConfig));
+    onAuthStateChanged(auth, u => { if (u) location.replace('dashboard.html'); });
+    const friendly = c => ({
+      'auth/invalid-credential': 'Incorrect email or password.', 'auth/wrong-password': 'Incorrect email or password.',
+      'auth/user-not-found': 'Incorrect email or password.', 'auth/invalid-email': 'Please enter a valid email address.',
+      'auth/too-many-requests': 'Too many attempts. Please wait a few minutes and try again.', 'auth/network-request-failed': 'Network error. Check your connection.'
+    }[c] || 'Could not sign in. Please try again.');
+    $('f').addEventListener('submit', async e => {
+      e.preventDefault(); $('msg').className = 'msg';
+      const em = $('email').value.trim(), pw = $('pass').value;
+      if (!em || !pw) return show('Enter your email and password.');
+      $('go').disabled = true; $('go').textContent = 'Signing in...';
+      try { await signInWithEmailAndPassword(auth, em, pw); location.replace('dashboard.html'); }
+      catch (err) { show(friendly(err.code)); $('go').disabled = false; $('go').textContent = 'Sign in'; }
+    });
+    $('forgot').addEventListener('click', async () => {
+      const em = $('email').value.trim(); if (!em) return show('Type your email above first, then click "Forgot password?".');
+      try { await sendPasswordResetEmail(auth, em); } catch (_) {}
+      show('If that email has an account, a reset link has been sent.', true);
+    });
+  }
+  $('tg').addEventListener('click', () => { const p = $('pass'), h = p.type === 'password'; p.type = h ? 'text' : 'password'; $('tg').textContent = h ? 'HIDE' : 'SHOW'; });
+</script>
+</body>
+</html>
